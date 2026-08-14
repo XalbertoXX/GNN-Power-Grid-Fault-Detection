@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "powergrid-faults"
+version = "0.1.0"
+description = "Fault classification, localization and dynamic-security assessment with ST-GAT, CNN and LSTM baselines."
+requires-python = ">=3.11"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

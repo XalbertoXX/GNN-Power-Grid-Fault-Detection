@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Raw / processed datasets
+data/raw/
+data/processed/
+data/processed_ieee14/
+*.xlsx
+*.xls
+*.pkl
+*.npz
+
+# Model checkpoints
+artifacts/
+artifacts_repeated/
+*.pt
+*.pth
+*.ckpt
+
+# Cache
+.cache/
+*.log
