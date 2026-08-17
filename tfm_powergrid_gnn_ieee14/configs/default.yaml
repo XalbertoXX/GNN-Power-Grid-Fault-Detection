@@ -1,0 +1,36 @@
+seed: 42
+device: auto
+
+dataset:
+  name: ieee14_figshare_30590399
+  excel_path: data/raw/ieee14_fault/IEEE 14 bus test system data.xlsx
+  sheet: row data
+  processed_dir: data/processed_ieee14
+  test_groups: 2
+  val_groups: 1
+  oc_round_decimals: 5
+  generator_buses: [1, 2, 3, 6, 8]
+  include_fct_as_feature: false
+
+model:
+  hidden: 64
+  dropout: 0.20
+  gat_heads: 4
+  temporal_layers: 1
+  edge_localization_head: false
+
+training:
+  epochs: 100
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.0001
+  patience: 15
+  lambda_fault_type: 1.0
+  lambda_line: 1.5
+  lambda_position: 1.0
+  lambda_security: 0.75
+  security_class_weighting: balanced
+
+robustness:
+  noise_std: [0.0, 0.02, 0.05, 0.10]
+  missing_pmu_fraction: [0.0, 0.20, 0.40, 0.60]
