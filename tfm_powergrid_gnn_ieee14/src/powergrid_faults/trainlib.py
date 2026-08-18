@@ -71,7 +71,7 @@ def predict(model, loader, edge_index, device, perturb=None):
     return vals
 
 
-def train_one(model_name: str, cfg: dict):
+def train_one(model_name: str, cfg: dict, artifact_root: str | Path = "artifacts"):
     seed_everything(int(cfg["seed"]))
     device = get_device(cfg.get("device", "auto"))
     processed = Path(cfg["dataset"]["processed_dir"])
@@ -103,7 +103,7 @@ def train_one(model_name: str, cfg: dict):
         counts = torch.bincount(train_ds.y_security, minlength=5).float()
         security_weights = (counts.sum() / (len(counts) * counts.clamp_min(1.0))).to(device)
 
-    out_dir = Path("artifacts") / model_name
+    out_dir = Path(artifact_root) / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
     history, best, bad = [], float("inf"), 0
     patience = int(cfg["training"]["patience"])
