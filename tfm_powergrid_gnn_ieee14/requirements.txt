@@ -12,3 +12,4 @@ tqdm>=4.66
 matplotlib>=3.9
 torch-geometric>=2.7
 scipy>=1.13
+-e .
