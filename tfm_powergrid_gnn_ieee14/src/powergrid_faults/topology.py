@@ -22,7 +22,7 @@ LINE_NAMES = [
 
 GENERATOR_BUSES_1BASED = [1, 2, 3, 6, 8]
 
-
+# Function to create a simple undirected graph from a MultiGraph by removing parallel edges. 
 def case14_powerfactory_graph():
     """PowerFactory-style IEEE-14 topology.
 
@@ -55,15 +55,144 @@ def case14_powerfactory_graph():
     }
     return g, edge_index, meta
 
-
+# Function to create a simple undirected graph from a MultiGraph by removing parallel edges. This is useful for certain graph algorithms that require a simple graph representation.
 def simple_graph(g: nx.MultiGraph) -> nx.Graph:
     out = nx.Graph()
     out.add_nodes_from(g.nodes)
     out.add_edges_from((u, v) for u, v in g.edges())
     return out
 
-
+# The `topological_positions` function computes the positions of nodes in a graph using the Kamada-Kawai layout algorithm.
 def topological_positions(g: nx.Graph | nx.MultiGraph):
     sg = simple_graph(g) if isinstance(g, nx.MultiGraph) else g
     pos = nx.kamada_kawai_layout(sg)
     return {int(k): (float(v[0]), float(v[1])) for k, v in pos.items()}
+
+# The function generates a new edge index that maintains the same number of buses, edges, and degree distribution as the original graph while shuffling the connections. 
+# It ensures that the resulting graph remains connected and does not introduce excessive multiplicities beyond what is present in the original topology. 
+def degree_preserving_shuffled_edge_index(
+    seed: int = 20260821,
+    n_swaps: int = 250,
+):
+    """Create a connected shuffled IEEE-14 topology for ablation.
+
+    The shuffled graph preserves:
+    - the 14 buses,
+    - the number of physical edge objects,
+    - the degree of every bus,
+    - graph connectivity.
+
+    Only the wiring is changed. Parallel edges are allowed because the original
+    PowerFactory-style graph also contains a parallel 1-2 circuit.
+
+    Returns
+    -------
+    edge_index : torch.LongTensor
+        Bidirectional PyG edge index with the same number of directed edges
+        as the real topology.
+    metadata : dict
+        Reproducibility information about the shuffle.
+    """
+    from collections import Counter
+
+    rng = np.random.default_rng(seed)
+
+    # Treat transmission lines and transformers identically for message passing:
+    # the ST-GAT currently consumes only connectivity, not edge attributes.
+    original = [
+        tuple(sorted((u - 1, v - 1)))
+        for u, v in (FAULT_LINES_1BASED + TRANSFORMERS_1BASED)
+    ]
+    edges = list(original)
+
+    def connected(edge_list):
+        g = nx.MultiGraph()
+        g.add_nodes_from(range(14))
+        g.add_edges_from(edge_list)
+        return nx.is_connected(g)
+
+    successful = 0
+    attempts = 0
+    max_attempts = max(10000, n_swaps * 200)
+
+    while successful < n_swaps and attempts < max_attempts:
+        attempts += 1
+        i, j = rng.choice(len(edges), size=2, replace=False)
+        a, b = edges[i]
+        c, d = edges[j]
+
+        # Four distinct endpoints make a clean degree-preserving double-edge swap.
+        if len({a, b, c, d}) < 4:
+            continue
+
+        if rng.random() < 0.5:
+            cand1 = tuple(sorted((a, d)))
+            cand2 = tuple(sorted((c, b)))
+        else:
+            cand1 = tuple(sorted((a, c)))
+            cand2 = tuple(sorted((b, d)))
+
+        if cand1[0] == cand1[1] or cand2[0] == cand2[1]:
+            continue
+
+        old_pair = sorted([edges[i], edges[j]])
+        new_pair = sorted([cand1, cand2])
+        if old_pair == new_pair:
+            continue
+
+        proposal = list(edges)
+        proposal[i] = cand1
+        proposal[j] = cand2
+
+        # Do not create multiplicities larger than those already reasonable for
+        # this MultiGraph (the real topology contains a double circuit).
+        if max(Counter(proposal).values()) > 2:
+            continue
+
+        if not connected(proposal):
+            continue
+
+        edges = proposal
+        successful += 1
+
+    if successful < n_swaps:
+        raise RuntimeError(
+            f"Could only perform {successful}/{n_swaps} valid topology swaps"
+        )
+
+    directed = []
+    for u, v in edges:
+        directed.extend([(u, v), (v, u)])
+    edge_index = torch.tensor(np.asarray(directed).T, dtype=torch.long)
+
+    g_real = nx.MultiGraph()
+    g_real.add_nodes_from(range(14))
+    g_real.add_edges_from(original)
+
+    g_shuffled = nx.MultiGraph()
+    g_shuffled.add_nodes_from(range(14))
+    g_shuffled.add_edges_from(edges)
+
+    original_counter = Counter(original)
+    shuffled_counter = Counter(edges)
+    overlap = sum(
+        min(original_counter[e], shuffled_counter[e])
+        for e in set(original_counter) | set(shuffled_counter)
+    )
+
+    metadata = {
+        "shuffle_seed": int(seed),
+        "requested_swaps": int(n_swaps),
+        "successful_swaps": int(successful),
+        "n_buses": 14,
+        "n_undirected_edge_objects": len(edges),
+        "n_directed_edges": int(edge_index.shape[1]),
+        "connected": bool(nx.is_connected(g_shuffled)),
+        "degree_sequence_real": [int(g_real.degree(n)) for n in range(14)],
+        "degree_sequence_shuffled": [int(g_shuffled.degree(n)) for n in range(14)],
+        "edge_object_overlap_with_real": int(overlap),
+        "edge_object_overlap_fraction": float(overlap / len(original)),
+        "real_edges_0based": [list(e) for e in original],
+        "shuffled_edges_0based": [list(e) for e in edges],
+    }
+    return edge_index, metadata

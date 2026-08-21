@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd
 
+# This script inspects the IEEE 14 bus test system dataset.
 from powergrid_faults.data import (
     META_COLS, PRE_COLS, dynamic_columns, infer_operating_condition_groups,
     read_ieee14_excel, reshape_dynamic,

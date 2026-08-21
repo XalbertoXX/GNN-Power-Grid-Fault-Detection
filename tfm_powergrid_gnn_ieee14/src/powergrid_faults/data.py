@@ -22,12 +22,12 @@ PRE_COLS = PRE_P + PRE_Q + PRE_V
 SECURITY_NAMES_RAW = ["unstable", "urgent", "strong", "alarm", "normal"]
 POSITION_VALUES = np.asarray([21.4, 67.2, 91.7], dtype=np.float32)
 
-
+# Check that the Excel sheet has the expected schema. The Figshare release has 230 columns:
 def _hash_row(values: np.ndarray, decimals: int) -> str:
     rounded = np.round(values.astype(np.float64), decimals=decimals)
     return hashlib.sha1(rounded.tobytes()).hexdigest()[:12]
 
-
+# Read the IEEE 14 bus test system data from an Excel file.
 def read_ieee14_excel(path: str | Path, sheet: str = "row data") -> pd.DataFrame:
     path = Path(path)
     if not path.exists():
@@ -46,7 +46,7 @@ def read_ieee14_excel(path: str | Path, sheet: str = "row data") -> pd.DataFrame
         raise ValueError("Dataset contains NaN values; inspect before training instead of silently imputing.")
     return df
 
-
+# Get the column names for the dynamic features.
 def dynamic_columns(df: pd.DataFrame) -> list[str]:
     # Exact schema discovered in the Figshare Excel: metadata[0:4], pre-fault[4:19],
     # 14 groups x 15 generator features[19:229], output[229].
@@ -55,7 +55,7 @@ def dynamic_columns(df: pd.DataFrame) -> list[str]:
         raise ValueError(f"Expected 210 dynamic columns, got {len(cols)}")
     return cols
 
-
+# Reshape the dynamic features into a 4D array.
 def reshape_dynamic(df: pd.DataFrame) -> np.ndarray:
     """Return [samples, 14 published dynamic blocks, 5 monitored generators, 3 features P/Q/V]."""
     arr = df[dynamic_columns(df)].to_numpy(np.float32)
@@ -63,12 +63,12 @@ def reshape_dynamic(df: pd.DataFrame) -> np.ndarray:
     arr = np.transpose(arr, (0, 1, 3, 2))     # [S,T,G,3]
     return arr
 
-
+# Reshape the pre-fault features into a 3D array.
 def reshape_prefault(df: pd.DataFrame) -> np.ndarray:
     arr = df[PRE_COLS].to_numpy(np.float32).reshape(len(df), 3, 5)
     return np.transpose(arr, (0, 2, 1))        # [S,G,3]
 
-
+# Infer the operating condition groups from the pre-fault features.
 def infer_operating_condition_groups(df: pd.DataFrame, decimals: int = 5) -> tuple[np.ndarray, dict]:
     """Infer repeated operating-condition IDs from pre-fault P/Q/V signatures.
 
@@ -102,7 +102,7 @@ def infer_operating_condition_groups(df: pd.DataFrame, decimals: int = 5) -> tup
         )
     return groups, info
 
-
+# Split the dataset into train/val/test indices based on operating condition groups.
 def split_by_groups(groups: np.ndarray, seed: int, val_groups: int = 1, test_groups: int = 2):
     unique = np.unique(groups)
     if len(unique) < val_groups + test_groups + 1:
@@ -119,13 +119,13 @@ def split_by_groups(groups: np.ndarray, seed: int, val_groups: int = 1, test_gro
         {"train_groups": train_g.tolist(), "val_groups": val_g.tolist(), "test_groups": test_g.tolist()},
     )
 
-
+# Fit scalers for dynamic and pre-fault features based on the training indices.
 def _fit_scalers(dynamic: np.ndarray, prefault: np.ndarray, train_idx: np.ndarray):
     dyn_scaler = StandardScaler().fit(dynamic[train_idx].reshape(-1, 3))
     pre_scaler = StandardScaler().fit(prefault[train_idx].reshape(-1, 3))
     return dyn_scaler, pre_scaler
 
-
+# Build the input tensor for the bus features, including dynamic and pre-fault data.
 def build_bus_tensor(dynamic: np.ndarray, prefault: np.ndarray, dyn_scaler, pre_scaler,
                      generator_buses: list[int]) -> np.ndarray:
     """Create [S,T,14,7] = dyn(P,Q,V), pre(P,Q,V), observed-mask."""
@@ -141,7 +141,7 @@ def build_bus_tensor(dynamic: np.ndarray, prefault: np.ndarray, dyn_scaler, pre_
         X[:, :, b, 6] = 1.0
     return X
 
-
+# Build the target arrays for fault type, line, position, POL, security, and FCT.
 def build_targets(df: pd.DataFrame):
     fault_type = df["FaultType"].to_numpy(np.int64) - 1
     line = df["lname"].to_numpy(np.int64) - 1
@@ -157,7 +157,7 @@ def build_targets(df: pd.DataFrame):
     fct = df["FCT"].to_numpy(np.float32)
     return fault_type, line, position, pol_raw, security, fct
 
-
+# Prepare the IEEE 14 bus dataset by reading the Excel file, reshaping features, splitting into train/val/test, and saving to disk.
 def prepare_ieee14_dataset(cfg: dict):
     dcfg = cfg["dataset"]
     df = read_ieee14_excel(dcfg["excel_path"], dcfg.get("sheet", "row data"))
@@ -238,7 +238,7 @@ def prepare_ieee14_dataset(cfg: dict):
     (Path("reports") / "ieee14_schema_report.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return metadata
 
-
+# Dataset class for the IEEE 14 bus test system
 class IEEE14Dataset(Dataset):
     def __init__(self, npz_path: str | Path, split: str):
         data = np.load(npz_path, allow_pickle=False)

@@ -12,7 +12,10 @@ from sklearn.metrics import (
 
 POSITION_VALUES = np.asarray([21.4, 67.2, 91.7], dtype=np.float32)
 
-
+# The following metrics are computed for each model prediction:
+# - fault type classification (3 classes)
+# - line classification (15 classes)
+# - position regression (3 classes, but treated as a regression problem)
 def _class_metrics(y, probs, prefix):
     pred = probs.argmax(1)
     return {
@@ -21,7 +24,7 @@ def _class_metrics(y, probs, prefix):
         f"{prefix}_macro_f1": float(f1_score(y, pred, average="macro", zero_division=0)),
     }
 
-
+# Compute all relevant metrics for the model predictions, including classification and regression metrics.
 def all_metrics(y_type, p_type, y_line, p_line, y_position, p_position,
                 y_pol, y_security, p_security):
     out = {}

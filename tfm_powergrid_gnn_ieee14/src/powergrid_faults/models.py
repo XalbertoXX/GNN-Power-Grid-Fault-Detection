@@ -4,14 +4,14 @@ import torch
 from torch import nn
 from torch_geometric.nn import GATv2Conv
 
-
+# Repeat the edge index for multiple graph instances.
 def repeat_edge_index(edge_index: torch.Tensor, copies: int, n_nodes: int) -> torch.Tensor:
     """Repeat one graph for `copies` disconnected graph instances."""
     e = edge_index.shape[1]
     offsets = torch.arange(copies, device=edge_index.device).repeat_interleave(e) * n_nodes
     return edge_index.repeat(1, copies) + offsets.unsqueeze(0)
 
-
+# Head modules for each prediction task.
 class Heads(nn.Module):
     def __init__(self, hidden: int, dropout: float, include_line: bool = True):
         super().__init__()
@@ -32,13 +32,14 @@ class Heads(nn.Module):
             out["line"] = self.line(h)
         return out
 
-
+# Edge line scoring module.
 class EdgeLineHead(nn.Module):
     """Score each physical faultable transmission line from its endpoint embeddings.
 
     A small learned line-ID embedding is included because the PowerFactory IEEE-14
     representation contains two parallel 1-2 circuits with identical endpoints.
     """
+    # Initialize the edge line scoring module.
     def __init__(self, hidden: int, line_pairs: list[tuple[int, int]], dropout: float):
         super().__init__()
         pairs = torch.tensor(line_pairs, dtype=torch.long)
@@ -51,7 +52,7 @@ class EdgeLineHead(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(hidden, 1),
         )
-
+    # Forward pass to score each line based on its endpoint embeddings and line ID embedding.
     def forward(self, node_h: torch.Tensor) -> torch.Tensor:
         # node_h [B,N,H], line_pairs [L,2]
         u = self.line_pairs[:, 0]
@@ -63,7 +64,7 @@ class EdgeLineHead(nn.Module):
         line_e = self.line_id(ids).unsqueeze(0).expand(node_h.size(0), -1, -1)
         return self.scorer(torch.cat([pair, line_e], dim=-1)).squeeze(-1)
 
-
+# Spatial-temporal GATv2 model for bus-level fault detection and classification.
 class STGAT(nn.Module):
     """Spatial GATv2 encoder per feature block + temporal GRU encoder.
 
@@ -139,7 +140,7 @@ class STGAT(nn.Module):
             out["attention"] = a.mean(dim=-1) if a.ndim > 1 else a
         return out
 
-
+# 1D Convolutional Neural Network for temporal feature extraction
 class CNN1D(nn.Module):
     def __init__(self, in_features: int, n_buses: int = 14, hidden: int = 64,
                  dropout: float = 0.2, **_):
@@ -157,7 +158,7 @@ class CNN1D(nn.Module):
         z = x.permute(0, 2, 3, 1).reshape(x.size(0), -1, x.size(1))
         return self.heads(self.net(z))
 
-
+# LSTM-based model for temporal feature extraction
 class LSTMBaseline(nn.Module):
     def __init__(self, in_features: int, n_buses: int = 14, hidden: int = 64,
                  dropout: float = 0.2, temporal_layers: int = 1, **_):
@@ -174,7 +175,7 @@ class LSTMBaseline(nn.Module):
         out, _ = self.lstm(z)
         return self.heads(self.drop(out[:, -1]))
 
-
+# Build a model instance based on the specified name and parameters.
 def build_model(name: str, **kwargs):
     name = name.lower()
     if name == "stgat":

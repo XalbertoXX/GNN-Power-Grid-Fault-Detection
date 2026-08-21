@@ -8,6 +8,7 @@ from scipy.stats import ttest_rel, wilcoxon
 from powergrid_faults.trainlib import train_one
 from powergrid_faults.utils import load_config
 
+# This script runs repeated experiments for the thesis.
 ROOT = Path(__file__).resolve().parents[1]
 cfg0 = load_config(ROOT / "configs/default.yaml")
 seeds = [11, 22, 33, 44, 55]
@@ -16,6 +17,7 @@ rows = []
 repeated_root = ROOT / "artifacts_repeated"
 repeated_root.mkdir(exist_ok=True)
 
+# Run repeated experiments for each model and seed
 for seed in seeds:
     for model in ["cnn", "lstm", "stgat"]:
         cfg = copy.deepcopy(cfg0)
@@ -43,6 +45,7 @@ summary = df.groupby("model")[metrics].agg(["mean", "std"])
 summary.columns = [f"{metric}_{stat}" for metric, stat in summary.columns]
 summary.reset_index().to_csv(reports / "repeated_summary.csv", index=False)
 
+# Statistical significance tests for stgat vs. cnn and stgat vs. lstm
 results = []
 for baseline in ["cnn", "lstm"]:
     for metric in metrics:

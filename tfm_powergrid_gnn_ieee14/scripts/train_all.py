@@ -3,6 +3,7 @@ import pandas as pd
 from powergrid_faults.trainlib import robustness_table, train_one
 from powergrid_faults.utils import load_config
 
+# This script trains all models and generates a comparison report.
 ROOT = Path(__file__).resolve().parents[1]
 cfg = load_config(ROOT / "configs/default.yaml")
 rows, robust = [], []

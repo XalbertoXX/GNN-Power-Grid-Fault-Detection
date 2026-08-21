@@ -17,7 +17,7 @@ from .models import build_model
 from .topology import case14_powerfactory_graph
 from .utils import get_device, save_json, seed_everything
 
-
+#  Computes a weighted sum of cross-entropy losses for multiple prediction tasks, including fault type, line, position, and security classification. 
 def multitask_loss(out, batch, cfg, security_weights=None):
     ce = nn.CrossEntropyLoss()
     sec_ce = nn.CrossEntropyLoss(weight=security_weights) if security_weights is not None else ce
@@ -36,11 +36,11 @@ def multitask_loss(out, batch, cfg, security_weights=None):
     )
     return total, {k: float(v.detach()) for k, v in losses.items()}
 
-
+# Moves a batch of data to the specified device (CPU or GPU). It iterates over the items in the batch dictionary and moves any tensor values to the target device, while leaving non-tensor values unchanged. This is useful for preparing data for model training or evaluation on the appropriate hardware.
 def _move(batch, device):
     return {k: (v.to(device) if torch.is_tensor(v) else v) for k, v in batch.items()}
 
-
+# Predicts the outputs of the model for a given data loader, optionally applying a perturbation function to the input features. It returns a dictionary containing the true labels and predicted probabilities for fault type, line, position, polarity, and security classification, as well as the average latency per sample in milliseconds.
 def predict(model, loader, edge_index, device, perturb=None):
     model.eval()
     acc = {k: [] for k in ["y_type", "p_type", "y_line", "p_line", "y_position", "p_position", "y_pol", "y_security", "p_security"]}
@@ -70,8 +70,13 @@ def predict(model, loader, edge_index, device, perturb=None):
     vals["latency_ms_per_sample"] = 1000.0 * float(np.mean(latencies))
     return vals
 
-
-def train_one(model_name: str, cfg: dict, artifact_root: str | Path = "artifacts"):
+# Training function for one epoch
+def train_one(
+    model_name: str,
+    cfg: dict,
+    artifact_root: str | Path = "artifacts",
+    edge_index_override: torch.Tensor | None = None,
+):
     seed_everything(int(cfg["seed"]))
     device = get_device(cfg.get("device", "auto"))
     processed = Path(cfg["dataset"]["processed_dir"])
@@ -85,9 +90,17 @@ def train_one(model_name: str, cfg: dict, artifact_root: str | Path = "artifacts
     val_loader = DataLoader(val_ds, batch_size=bs, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=bs, shuffle=False)
 
-    _, edge_index, _ = case14_powerfactory_graph()
+    _, default_edge_index, graph_meta = case14_powerfactory_graph()
+    edge_index = default_edge_index if edge_index_override is None else edge_index_override
+    edge_index = edge_index.detach().clone().long()
+
+    if edge_index.ndim != 2 or edge_index.shape[0] != 2:
+        raise ValueError("edge_index must have shape [2, E]")
+    if edge_index.numel() > 0:
+        if int(edge_index.min()) < 0 or int(edge_index.max()) >= 14:
+            raise ValueError("edge_index contains a bus index outside [0, 13]")
+
     edge_index = edge_index.to(device)
-    _, _, graph_meta = case14_powerfactory_graph()
     kw = dict(
         in_features=int(meta["in_features"]), n_buses=14, hidden=int(cfg["model"]["hidden"]),
         heads=int(cfg["model"]["gat_heads"]), dropout=float(cfg["model"]["dropout"]),
@@ -142,7 +155,7 @@ def train_one(model_name: str, cfg: dict, artifact_root: str | Path = "artifacts
     save_json(met, out_dir / "metrics.json")
     return met
 
-
+# Robustness evaluation
 def robustness_table(model_name: str, cfg: dict):
     device = get_device(cfg.get("device", "auto"))
     processed = Path(cfg["dataset"]["processed_dir"])
