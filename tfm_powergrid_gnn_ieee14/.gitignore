@@ -32,3 +32,8 @@ artifacts_repeated/
 # Cache
 .cache/
 *.log
+
+# Experiment checkpoints / run artifacts
+artifacts/
+artifacts_repeated/
+artifacts_topology_ablation/

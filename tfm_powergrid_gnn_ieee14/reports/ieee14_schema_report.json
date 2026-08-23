@@ -1,0 +1,157 @@
+{
+  "dataset": "IEEE 14 bus test systems row data (Figshare 30590399)",
+  "n_samples": 21120,
+  "n_timesteps": 14,
+  "n_buses": 14,
+  "in_features": 7,
+  "generator_buses_1based": [
+    1,
+    2,
+    3,
+    6,
+    8
+  ],
+  "feature_names": [
+    "dynamic_P",
+    "dynamic_Q",
+    "dynamic_V",
+    "prefault_P",
+    "prefault_Q",
+    "prefault_V",
+    "observed"
+  ],
+  "fault_type_classes_raw": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "line_classes_raw": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "line_names_reference_order": [
+    "1-2 (circuit 1)",
+    "1-2 (circuit 2)",
+    "1-5",
+    "2-3",
+    "2-4",
+    "2-5",
+    "3-4",
+    "4-5",
+    "6-11",
+    "6-12",
+    "6-13",
+    "9-10",
+    "9-14",
+    "10-11",
+    "12-13",
+    "13-14"
+  ],
+  "line_mapping_status": "PowerFactory reference order; verify lname-to-line identity before making endpoint-specific claims",
+  "position_values_percent": [
+    21.399999618530273,
+    67.19999694824219,
+    91.69999694824219
+  ],
+  "security_raw_to_name": {
+    "0": "unstable",
+    "1": "urgent",
+    "2": "strong",
+    "3": "alarm",
+    "4": "normal"
+  },
+  "group_detection": {
+    "method": "within_combination_rank",
+    "n_groups": 11,
+    "min_group_size": 640,
+    "max_group_size": 640
+  },
+  "split": {
+    "train_groups": [
+      10,
+      3,
+      5,
+      2,
+      4,
+      9,
+      1,
+      8
+    ],
+    "val_groups": [
+      0
+    ],
+    "test_groups": [
+      6,
+      7
+    ]
+  },
+  "integrity": {
+    "rows": 21120,
+    "cols": 230,
+    "fct_unique": [
+      4.3714,
+      5.2502,
+      5.7852,
+      6.0755,
+      6.3814,
+      6.8397,
+      7.5865,
+      8.4369,
+      9.337,
+      9.9094
+    ],
+    "fault_type_unique": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "line_unique": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "pol_unique": [
+      21.4,
+      67.2,
+      91.7
+    ],
+    "output_counts": {
+      "0": 5944,
+      "1": 647,
+      "2": 2920,
+      "3": 6681,
+      "4": 4928
+    },
+    "fault_combinations": 1920,
+    "repetitions_per_fault_combination": 11.0
+  }
+}
