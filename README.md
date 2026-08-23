@@ -1,64 +1,71 @@
 # FaultLab
 
-FaultLab is a Master's Thesis project for comparing graph-based and conventional deep-learning approaches for fault analysis in electrical transmission networks.
+FaultLab is a Master's Thesis project for evaluating deep-learning approaches for fault analysis in electrical transmission networks.
 
-The project uses an IEEE 14-bus fault dataset and compares:
+The project compares three architectures on an IEEE 14-bus fault dataset:
 
 - **ST-GAT** — topology-aware spatio-temporal Graph Attention Network
 - **CNN** — temporal convolutional baseline
 - **LSTM** — recurrent temporal baseline
 
-The main tasks are:
-
-- Fault-type classification
-- Faulted-line localization
-- Fault-position estimation
-- Dynamic-security classification
+The evaluated tasks are fault-type classification, faulted-line localization, fault-position estimation, and dynamic-security classification.
 
 ## Dataset
 
-The main dataset contains **21,120 IEEE 14-bus fault scenarios** with:
+The main dataset contains **21,120 IEEE 14-bus fault scenarios** generated from:
 
 - 10 fault clearing times
 - 4 fault types
 - 16 faulted lines
 - 3 fault positions
 - 11 operating conditions
-- Pre-fault and fault-on measurements from 5 generator buses
 
-Raw datasets are not included in the repository because of file size.
+It includes pre-fault and fault-on measurements from five generator buses.
 
-Expected local path:
+Raw datasets are not stored in Git because of file size. The expected local location is:
 
 ```text
 data/raw/ieee14_fault/IEEE 14 bus test system data.xlsx
 ```
 
-The project also keeps an IEEE 39-bus transient-stability dataset as secondary material, but the IEEE 14-bus dataset is the main dataset used for fault localization experiments.
-
 ## Project structure
 
 ```text
-.
-├── configs/
+tfm_powergrid_gnn_ieee14/
 ├── data/
-│   ├── raw/
-│   └── processed_ieee14/
+│   └── raw/
+├── figures/
 ├── reports/
 │   └── baseline/
 ├── scripts/
+│   ├── download_data.py
+│   ├── generate_figures.py
 │   ├── inspect_data.py
 │   ├── prepare_data.py
-│   ├── train_all.py
-│   └── run_repeated.py
+│   ├── run_repeated.py
+│   ├── run_topology_ablation.py
+│   └── train_all.py
 ├── src/
 │   └── powergrid_faults/
+│       ├── __init__.py
+│       ├── data.py
+│       ├── metrics.py
+│       ├── models.py
+│       ├── topology.py
+│       ├── trainlib.py
+│       ├── utils.py
+│       └── viz.py
+├── tests/
+├── .gitignore
 ├── dashboard.py
 ├── pyproject.toml
-└── requirements.txt
+├── README.md
+├── requirements.txt
+├── TFM_EXPERIMENT_PLAN.md
+└── LICENSE
 ```
 
-Model checkpoints and large datasets are intentionally excluded from Git.
+Generated model checkpoints and large datasets are intentionally excluded from version control.
 
 ## Setup
 
@@ -71,7 +78,7 @@ python -m pip install -r requirements.txt
 python -m pip install -e .
 ```
 
-## Run the pipeline
+## Main workflow
 
 Inspect the dataset:
 
@@ -79,33 +86,45 @@ Inspect the dataset:
 python scripts/inspect_data.py
 ```
 
-Prepare tensors and splits:
+Prepare the processed tensors and train/validation/test splits:
 
 ```bash
 python scripts/prepare_data.py
 ```
 
-Train the three main models:
+Train CNN, LSTM and ST-GAT:
 
 ```bash
 python scripts/train_all.py
 ```
 
-Run the Streamlit dashboard:
+Run the interactive dashboard:
 
 ```bash
 python -m streamlit run dashboard.py
 ```
 
-Run repeated experiments with five seeds:
+Run the five-seed repeated evaluation:
 
 ```bash
 python scripts/run_repeated.py
 ```
 
-## Current baseline results
+Run the topology ablation:
 
-Five-seed repeated experiments show that all three models perform similarly overall.
+```bash
+python scripts/run_topology_ablation.py
+```
+
+Generate the final thesis figures:
+
+```bash
+python scripts/generate_figures.py
+```
+
+## Experimental results
+
+Five-seed repeated evaluation produced the following baseline results:
 
 | Model | Fault-type Macro-F1 | Line Accuracy | Position MAE | Security Macro-F1 | Instability AUROC |
 |---|---:|---:|---:|---:|---:|
@@ -113,51 +132,29 @@ Five-seed repeated experiments show that all three models perform similarly over
 | LSTM | **0.948 ± 0.001** | 0.656 ± 0.010 | **12.05 ± 0.36** | **0.684 ± 0.013** | 0.987 ± 0.001 |
 | ST-GAT | 0.945 ± 0.003 | 0.667 ± 0.006 | 12.37 ± 0.26 | 0.679 ± 0.003 | 0.986 ± 0.001 |
 
-No statistically significant superiority of ST-GAT over CNN or LSTM was observed with five runs.
+No statistically significant superiority of ST-GAT over the CNN or LSTM baselines was observed in the standard evaluation.
 
-ST-GAT does, however, show lower run-to-run variability in several metrics.
+The topology ablation also showed no performance advantage from the physical IEEE-14 connectivity over a degree-preserving shuffled graph.
 
-Detailed outputs are stored in:
+However, the robustness evaluation showed that **ST-GAT degrades less strongly when PMU observations are removed**, particularly for fault classification and line localization. This suggests that the graph-based architecture may be most useful under reduced grid observability rather than under clean, fully available measurements.
 
-```text
-reports/baseline/
-```
-
-## Next experiment
-
-The next experiment is a **topology ablation**:
-
-```text
-ST-GAT + real IEEE-14 topology
-vs
-ST-GAT + shuffled topology
-```
-
-The purpose is to determine whether the physical grid structure itself contributes useful information to the graph-based model.
-
-After that, only two robustness checks are planned:
-
-- Missing PMUs
-- Gaussian measurement noise
-
-This keeps the experimental scope focused while still providing a defensible comparison for the thesis.
+Detailed experiment outputs are stored under `reports/`, while publication-ready figures are generated under `figures/`.
 
 ## Dashboard
 
-The Streamlit dashboard provides:
+`dashboard.py` provides an interactive view of the IEEE-14 experiment, including:
 
-- IEEE-14 topology visualization
-- Model selection
-- Scenario inspection
-- Fault-type predictions
-- Fault-line localization
-- Fault-position estimates
-- Dynamic-security predictions
-- Model comparison
-- Robustness results
+- network topology
+- scenario selection
+- model predictions
+- fault-line localization
+- fault-position estimation
+- dynamic-security prediction
+- model comparison
+- robustness results
 
-## Thesis focus
+## Thesis objective
 
-The project evaluates whether explicitly incorporating electrical-grid topology through spatio-temporal graph neural networks improves fault localization and dynamic-security assessment compared with CNN and LSTM baselines.
+The project evaluates whether explicitly incorporating electrical-grid structure through a spatio-temporal graph neural network improves fault analysis compared with conventional temporal CNN and LSTM architectures.
 
-The goal is comparative evaluation, not to assume in advance that the graph model must outperform the baselines.
+The experiments are designed as a comparative study; the graph model is not assumed to outperform the baselines in advance.
