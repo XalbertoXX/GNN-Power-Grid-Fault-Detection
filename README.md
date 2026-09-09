@@ -70,6 +70,7 @@ Generated model checkpoints and large datasets are intentionally excluded from v
 ## Setup
 
 ```bash
+# cd to folder tfm_powergrid_gnn_ieee14
 python -m venv .venv
 source .venv/bin/activate
 
